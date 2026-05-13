@@ -1,115 +1,124 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const db = require("../config/mysql");
+const bcrypt = require("bcryptjs");
 
-const UserSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: [true, 'Please add a name'],
-      trim: true,
-      minlength: [2, 'Name must be at least 2 characters'],
-      maxlength: [50, 'Name cannot exceed 50 characters'],
-    },
+/* ======================
+   ✅ CREATE USER
+====================== */
+const createUser = async (userData) => {
 
-    email: {
-      type: String,
-      required: [true, 'Please add an email'],
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [
-        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-        'Please add a valid email',
-      ],
-    },
+  const {
+    name,
+    email,
+    password,
+    role = "user"
+  } = userData;
 
-    password: {
-      type: String,
-      required: [true, 'Please add a password'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: true, // include password when needed
-    },
-
-    gender: {
-      type: String,
-      enum: ['male', 'female', 'other'],
-    },
-
-    age: {
-      type: Number,
-      min: 13,
-      max: 120,
-    },
-
-    height: {
-      type: Number, // in cm
-      min: 100,
-      max: 250,
-    },
-
-    weight: {
-      type: Number, // in kg
-      min: 30,
-      max: 300,
-    },
-
-    fitnessGoals: {
-      type: [String],
-      default: [],
-    },
-
-    activityLevel: {
-      type: String,
-      enum: [
-        'sedentary',
-        'lightly_active',
-        'moderately_active',
-        'very_active',
-        'extremely_active',
-      ],
-    },
-
-    onboarded: {
-      type: Boolean,
-      default: false,
-    },
-
-    // Example fields for stats (optional)
-    workoutsCompleted: {
-      type: Number,
-      default: 0,
-    },
-    caloriesBurned: {
-      type: Number,
-      default: 0,
-    },
-
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
-
-// ============================
-// Password Hashing Middleware
-// ============================
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-
+  // ✅ HASH PASSWORD
   const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
 
-// ============================
-// Compare Password Method
-// ============================
-UserSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  const hashedPassword =
+    await bcrypt.hash(password, salt);
+
+  return new Promise((resolve, reject) => {
+
+    db.query(
+      `INSERT INTO users
+      (
+        name,
+        email,
+        password,
+        role
+      )
+      VALUES (?, ?, ?, ?)`,
+      [
+        name,
+        email,
+        hashedPassword,
+        role
+      ],
+      (err, result) => {
+
+        if (err) {
+          reject(err);
+        } else {
+          resolve(result);
+        }
+
+      }
+    );
+
+  });
+
 };
 
-module.exports = mongoose.model('User', UserSchema);
+/* ======================
+   ✅ FIND USER BY EMAIL
+====================== */
+const findUserByEmail = (email) => {
+
+  return new Promise((resolve, reject) => {
+
+    db.query(
+      "SELECT * FROM users WHERE email = ?",
+      [email],
+      (err, results) => {
+
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results[0]);
+        }
+
+      }
+    );
+
+  });
+
+};
+
+/* ======================
+   ✅ FIND USER BY ID
+====================== */
+const findUserById = (id) => {
+
+  return new Promise((resolve, reject) => {
+
+    db.query(
+      "SELECT * FROM users WHERE id = ?",
+      [id],
+      (err, results) => {
+
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results[0]);
+        }
+
+      }
+    );
+
+  });
+
+};
+
+/* ======================
+   ✅ MATCH PASSWORD
+====================== */
+const matchPassword = async (
+  enteredPassword,
+  hashedPassword
+) => {
+
+  return await bcrypt.compare(
+    enteredPassword,
+    hashedPassword
+  );
+
+};
+
+module.exports = {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  matchPassword
+};

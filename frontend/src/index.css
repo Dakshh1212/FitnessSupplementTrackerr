@@ -2,233 +2,219 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  html {
-    font-family: 'Inter', system-ui, sans-serif;
-  }
-  
-  body {
-    @apply bg-gray-50 text-gray-900 antialiased;
-  }
-  
-  * {
-    @apply border-gray-200;
-  }
+/* ================= FONT ================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+/* ================= ROOT ================= */
+:root {
+  --bg-main: #020617;
+  --bg-card: #1e293b;
+  --bg-soft: #020617;
+  --border: #334155;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --primary: #3b82f6;
+  --secondary: #6366f1;
 }
 
-@layer components {
-  /* Button Components */
-  .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200;
-  }
-  
-  .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
-  }
-  
-  .btn-secondary {
-    @apply bg-secondary-100 text-secondary-900 hover:bg-secondary-200 focus:ring-secondary-500;
-  }
-  
-  .btn-success {
-    @apply bg-success-600 text-white hover:bg-success-700 focus:ring-success-500;
-  }
-  
-  .btn-danger {
-    @apply bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500;
-  }
-  
-  .btn-outline {
-    @apply border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-primary-500;
-  }
-  
-  .btn-lg {
-    @apply px-6 py-3 text-base;
-  }
-  
-  .btn-sm {
-    @apply px-3 py-1.5 text-xs;
-  }
-  
-  /* Card Components */
-  .card {
-    @apply bg-white rounded-xl shadow-soft border border-gray-100;
-  }
-  
-  .card-header {
-    @apply px-6 py-4 border-b border-gray-100;
-  }
-  
-  .card-body {
-    @apply px-6 py-4;
-  }
-  
-  .card-footer {
-    @apply px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl;
-  }
-  
-  /* Form Components */
-  .form-input {
-    @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200;
-  }
-  
-  .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-2;
-  }
-  
-  .form-error {
-    @apply text-sm text-danger-600 mt-1;
-  }
-  
-  .form-help {
-    @apply text-sm text-gray-500 mt-1;
-  }
-  
-  /* Navigation */
-  .nav-link {
-    @apply flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200;
-  }
-  
-  .nav-link-active {
-    @apply bg-primary-100 text-primary-700;
-  }
-  
-  .nav-link-inactive {
-    @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900;
-  }
-  
-  /* Stats Cards */
-  .stat-card {
-    @apply bg-white rounded-xl p-6 shadow-soft border border-gray-100;
-  }
-  
-  .stat-value {
-    @apply text-2xl font-bold text-gray-900;
-  }
-  
-  .stat-label {
-    @apply text-sm font-medium text-gray-500 uppercase tracking-wide;
-  }
-  
-  .stat-change {
-    @apply text-sm font-medium;
-  }
-  
-  .stat-change-positive {
-    @apply text-success-600;
-  }
-  
-  .stat-change-negative {
-    @apply text-danger-600;
-  }
-  
-  /* Loading States */
-  .loading-spinner {
-    @apply animate-spin rounded-full border-2 border-gray-300 border-t-primary-600;
-  }
-  
-  .loading-skeleton {
-    @apply animate-pulse bg-gray-200 rounded;
-  }
-  
-  /* Progress Bars */
-  .progress-bar {
-    @apply w-full bg-gray-200 rounded-full overflow-hidden;
-  }
-  
-  .progress-fill {
-    @apply h-full bg-primary-600 transition-all duration-300 ease-out;
-  }
-  
-  /* Badges */
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-  
-  .badge-primary {
-    @apply bg-primary-100 text-primary-800;
-  }
-  
-  .badge-success {
-    @apply bg-success-100 text-success-800;
-  }
-  
-  .badge-warning {
-    @apply bg-warning-100 text-warning-800;
-  }
-  
-  .badge-danger {
-    @apply bg-danger-100 text-danger-800;
-  }
-  
-  .badge-gray {
-    @apply bg-gray-100 text-gray-800;
-  }
+/* ================= BODY ================= */
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
 }
 
-@layer utilities {
-  .text-gradient {
-    @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent;
-  }
-  
-  .bg-gradient-primary {
-    @apply bg-gradient-to-r from-primary-500 to-primary-700;
-  }
-  
-  .bg-gradient-success {
-    @apply bg-gradient-to-r from-success-500 to-success-700;
-  }
-  
-  .shadow-glow {
-    box-shadow: 0 0 20px rgba(14, 165, 233, 0.15);
-  }
-  
-  .backdrop-blur-light {
-    backdrop-filter: blur(8px);
-  }
+/* ================= GLOBAL ================= */
+/* ❌ removed "transition: all" */
+button, input, .card {
+  transition: 0.2s ease;
 }
 
-/* Custom Scrollbar */
+/* ================= SCROLLBAR ================= */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
 }
-
-::-webkit-scrollbar-track {
-  @apply bg-gray-100;
-}
-
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
+  background: var(--border);
+  border-radius: 10px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
+/* ================= CARD ================= */
+.card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  border: 1px solid transparent;
 }
 
-/* React DatePicker Styles */
-.react-datepicker-wrapper {
-  @apply w-full;
+.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary);
 }
 
-.react-datepicker__input-container input {
-  @apply form-input;
+/* ================= BUTTON ================= */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
 }
 
-/* React Select Styles */
-.react-select__control {
-  @apply border-gray-300 shadow-sm;
+.btn-primary:hover {
+  transform: scale(1.04);
+  opacity: 0.95;
 }
 
-.react-select__control--is-focused {
-  @apply border-primary-500 ring-2 ring-primary-500;
+.btn-secondary {
+  background: var(--border);
+  color: white;
+  padding: 10px;
+  border-radius: 12px;
 }
 
-/* Chart Tooltips */
-.recharts-tooltip-wrapper {
-  @apply rounded-lg shadow-lg;
+/* ================= INPUT ================= */
+.input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text-main);
 }
 
-.recharts-default-tooltip {
-  @apply bg-white border border-gray-200 rounded-lg shadow-lg;
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+}
+
+/* ================= GLASS ================= */
+.glass {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ================= AUTH ================= */
+.auth-container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, #1e293b, #020617);
+  overflow: hidden;
+}
+
+.auth-card {
+  width: 380px;
+  padding: 35px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ================= TITLE ================= */
+.title {
+  text-align: center;
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 25px;
+}
+
+/* ================= GOAL BUTTON ================= */
+.goal-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid transparent;
+}
+
+.goal-btn:hover {
+  border-color: var(--primary);
+}
+
+.goal-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+
+/* ================= STAT BOX ================= */
+.stat-box {
+  background: var(--bg-soft);
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+
+/* ================= GRID CARD ================= */
+.grid-card {
+  background: var(--bg-card);
+  padding: 14px;
+  border-radius: 14px;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.grid-card:hover {
+  border-color: var(--primary);
+  transform: scale(1.03);
+}
+
+/* ================= IMAGE ================= */
+.img-fit {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+  margin: auto;
+}
+
+/* ================= TEXT ================= */
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* ================= SHADOW ================= */
+.shadow-soft {
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+/* ================= GLOW EFFECT ================= */
+.auth-container::before {
+  content: "";
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(59,130,246,0.12), transparent);
+  top: -200px;
+  left: -200px;
+  z-index: 0;
+}
+
+.auth-container::after {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(139,92,246,0.12), transparent);
+  bottom: -200px;
+  right: -200px;
+  z-index: 0;
+}
+/* 🔥 FIX CLICK BLOCKING */
+.auth-container::before,
+.auth-container::after {
+  pointer-events: none;
 }

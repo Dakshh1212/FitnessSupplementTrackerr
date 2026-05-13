@@ -1,20 +1,16 @@
-// Clear authentication data script
-// Run this in browser console to reset authentication state
+// 🔐 Clear only app auth data
 
-console.log('Clearing authentication data...');
+console.log("Clearing FitTrack auth data...");
 
-// Clear localStorage
-localStorage.clear();
+// Remove only what your app uses
+localStorage.removeItem("token");
+localStorage.removeItem("user");
 
-// Clear sessionStorage
-sessionStorage.clear();
+// Optional: clear session storage if used
+sessionStorage.removeItem("token");
+sessionStorage.removeItem("user");
 
-// Clear cookies (if any)
-document.cookie.split(";").forEach(function(c) { 
-  document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-});
+console.log("Auth data cleared ✅");
 
-console.log('Authentication data cleared. Please refresh the page.');
-
-// Refresh the page
+// Reload
 window.location.reload();

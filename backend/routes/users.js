@@ -1,18 +1,58 @@
-// backend/routes/users.js
-const express = require('express');
-const { protect } = require('../middleware/auth');
-const { getAllUsers, getUserProfile } = require('../controllers/userController');
-
+const express = require("express");
 const router = express.Router();
 
-// @desc    Get all users
-// @route   GET /api/users
-// @access  Private (for testing you can remove `protect` for now)
-router.get('/', protect, getAllUsers);
+const { protect } = require("../middleware/authMiddleware");
+const {
+  getAllUsers,
+  getUserProfile
+} = require("../controllers/userController");
 
-// @desc    Get logged-in user profile
-// @route   GET /api/users/profile
-// @access  Private
-router.get('/profile', protect, getUserProfile);
+/* =======================
+   👤 GET CURRENT USER
+======================= */
+router.get("/me", protect, getUserProfile);
+
+
+/* =======================
+   🔐 ADMIN MIDDLEWARE (SAFE)
+======================= */
+const adminOnly = (req, res, next) => {
+
+  try {
+
+    const ADMIN_EMAIL = "thakraldaksh5040@gmail.com";
+
+    if (!req.user?.email) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized ❌"
+      });
+    }
+
+    if (req.user.email !== ADMIN_EMAIL) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied ❌"
+      });
+    }
+
+    next();
+
+  } catch (err) {
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+
+  }
+
+};
+
+
+/* =======================
+   👥 GET ALL USERS (ADMIN ONLY)
+======================= */
+router.get("/", protect, adminOnly, getAllUsers);
 
 module.exports = router;
