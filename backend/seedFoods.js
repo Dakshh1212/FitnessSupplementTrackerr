@@ -13,7 +13,7 @@ const foods = [
 
   { name: "Milk", category: "dairy", imageUrl: "https://plus.unsplash.com/premium_photo-1694481100261-ab16523c4093?w=600", calories: 60, protein: 3.2, carbs: 5, fats: 3.3 },
 
-  { name: "Paneer", category: "dairy", imageUrl: "https://images.unsplash.com/photo-1630748661719-875c3b7ebfb7?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fHBhbmVlcnxlbnwwfHwwfHx8MA%3D%3D", calories: 265, protein: 18, carbs: 1.2, fats: 20 },
+  { name: "Paneer", category: "dairy", imageUrl: "https://images.unsplash.com/photo-1589647363585-f4a7d3877b10", calories: 265, protein: 18, carbs: 1.2, fats: 20 },
 
   { name: "Rice", category: "grains", imageUrl: "https://plus.unsplash.com/premium_photo-1675814316651-3ce3c6409922?w=600", calories: 130, protein: 2.5, carbs: 28, fats: 0.3 },
 

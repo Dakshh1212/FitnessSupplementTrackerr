@@ -7,33 +7,32 @@ export default function Diet() {
 
   const [foods, setFoods] = useState([]);
   const [search, setSearch] = useState("");
-
   const [mealType, setMealType] = useState("breakfast");
-
   const [selectedFoods, setSelectedFoods] = useState([]);
-
   const [totalCalories, setTotalCalories] = useState(0);
 
   /* ================= FETCH FOODS ================= */
   useEffect(() => {
     const fetchFoods = async () => {
-      const res = await API.get("/diet/foods");
-      setFoods(res.data.data || []);
+      try {
+        const res = await API.get("/diet/foods");
+        setFoods(res.data.data || []);
+      } catch (err) {
+        console.log(err);
+        setFoods([]);
+      }
     };
     fetchFoods();
   }, []);
 
   /* ================= ADD FOOD ================= */
   const addFood = (food) => {
-
     const id = food.id;
 
-    const exists = selectedFoods.find(f => f.id === id);
+    if (selectedFoods.find(f => f.id === id)) return;
 
-    if (exists) return;
-
-    setSelectedFoods([
-      ...selectedFoods,
+    setSelectedFoods(prev => [
+      ...prev,
       {
         id,
         name: food.name,
@@ -46,80 +45,57 @@ export default function Diet() {
 
   /* ================= REMOVE FOOD ================= */
   const removeFood = (id) => {
-    setSelectedFoods(selectedFoods.filter(f => f.id !== id));
+    setSelectedFoods(prev => prev.filter(f => f.id !== id));
   };
 
   /* ================= UPDATE QTY ================= */
   const updateQty = (id, value) => {
-
-    const updated = selectedFoods.map(f => {
-
-      if (f.id === id) {
-        return {
-          ...f,
-          quantity: Number(value)
-        };
-      }
-
-      return f;
-    });
-
-    setSelectedFoods(updated);
+    setSelectedFoods(prev =>
+      prev.map(f =>
+        f.id === id ? { ...f, quantity: Number(value) } : f
+      )
+    );
   };
 
-  /* ================= CALCULATE CALORIES ================= */
+  /* ================= CALORIES ================= */
   useEffect(() => {
-
     let total = 0;
 
     selectedFoods.forEach(f => {
-      const base = f.calories || 0;
-      const qty = f.quantity || 0;
-
-      total += (base * qty) / 100;
+      total += (f.calories * f.quantity) / 100;
     });
 
     setTotalCalories(Math.round(total));
-
   }, [selectedFoods]);
 
-  /* ================= SAVE MEAL ================= */
+  /* ================= SAVE ================= */
   const handleSave = async () => {
-
-    if (selectedFoods.length === 0) {
-      return alert("Add food first");
-    }
+    if (!selectedFoods.length) return alert("Add food first");
 
     try {
-
-      // IMPORTANT: single clean request per food
       for (const food of selectedFoods) {
-
         await API.post("/diet/entries", {
           food_id: food.id,
           quantity: food.quantity,
           mealType
         });
-
       }
 
-      alert("Meal Saved Successfully ✅");
-
+      alert("Meal Saved ✅");
       setSelectedFoods([]);
 
     } catch (err) {
       console.log(err);
-      alert("Failed to save meal ❌");
+      alert("Error saving meal ❌");
     }
   };
 
-  /* ================= FILTER FOODS ================= */
   const filteredFoods = foods.filter(f =>
     f.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-[#020617] via-[#0f172a] to-[#020617] text-white">
+    <div className="flex min-h-screen bg-[#020617] text-white">
 
       <Sidebar />
 
@@ -127,25 +103,30 @@ export default function Diet() {
 
         <Navbar />
 
-        <div className="p-6 space-y-6">
+        {/* MAIN CONTAINER */}
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
 
           {/* HEADER */}
           <div>
-            <h1 className="text-3xl font-bold">Diet Tracker 🍎</h1>
-            <p className="text-gray-400">Track your meals like a pro</p>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text">
+              Diet Tracker 🍎
+            </h1>
+            <p className="text-gray-400 mt-1">
+              Clean & Smart Nutrition Tracking
+            </p>
           </div>
 
           {/* MEAL TYPE */}
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
 
             {["breakfast", "lunch", "dinner", "snack"].map(type => (
               <button
                 key={type}
                 onClick={() => setMealType(type)}
-                className={`px-4 py-2 rounded-xl transition ${
+                className={`px-4 py-2 rounded-full text-sm transition ${
                   mealType === type
-                    ? "bg-green-500"
-                    : "bg-white/10"
+                    ? "bg-green-500 text-black"
+                    : "bg-white/10 hover:bg-white/20"
                 }`}
               >
                 {type}
@@ -159,70 +140,85 @@ export default function Diet() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search food..."
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-green-400"
           />
 
-          {/* FOOD LIST */}
-          <div className="grid md:grid-cols-4 gap-4">
+          {/* FOOD GRID (FIXED RESPONSIVE + SIZE CONTROL) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4">
 
             {filteredFoods.map(food => (
               <div
                 key={food.id}
                 onClick={() => addFood(food)}
-                className="bg-white/5 border border-white/10 p-4 rounded-2xl cursor-pointer hover:bg-white/10 transition"
+                className="group cursor-pointer bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition"
               >
 
-                <img
-                  src={food.imageUrl}
-                  className="h-24 w-full object-cover rounded-lg mb-2"
-                  onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/150";
-                  }}
-                />
+                {/* FIXED IMAGE HEIGHT */}
+                <div className="h-24 sm:h-28 w-full overflow-hidden bg-black/20">
+                  <img
+                    src={food.imageUrl}
+                    className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/300";
+                    }}
+                  />
+                </div>
 
-                <p className="font-semibold">{food.name}</p>
+                {/* TEXT */}
+                <div className="p-3">
+                  <p className="font-semibold text-sm truncate">
+                    {food.name}
+                  </p>
 
-                <p className="text-sm text-gray-400">
-                  {food.calories} kcal / 100g
-                </p>
+                  <p className="text-xs text-gray-400">
+                    {food.calories} kcal / 100g
+                  </p>
+
+                  <p className="text-xs text-green-400 opacity-0 group-hover:opacity-100 transition">
+                    Tap to add →
+                  </p>
+                </div>
 
               </div>
             ))}
 
           </div>
 
-          {/* SELECTED MEALS */}
-          <div className="bg-white/5 border border-white/10 p-5 rounded-2xl">
+          {/* MEAL BUILDER */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
 
             <h2 className="text-xl font-semibold mb-4">
-              Meal Builder
+              Meal Builder 🍽️
             </h2>
 
             {selectedFoods.length === 0 ? (
-              <p className="text-gray-400">No food selected</p>
+              <p className="text-gray-400">No foods selected</p>
             ) : (
               selectedFoods.map(food => (
-                <div key={food.id} className="flex justify-between items-center mb-3">
+                <div
+                  key={food.id}
+                  className="flex justify-between items-center py-3 border-b border-white/10"
+                >
 
                   <div>
-                    <p>{food.name}</p>
+                    <p className="font-medium">{food.name}</p>
                     <p className="text-xs text-gray-400">
                       {(food.calories * food.quantity / 100).toFixed(0)} kcal
                     </p>
                   </div>
 
-                  <div className="flex gap-2 items-center">
+                  <div className="flex items-center gap-3">
 
                     <input
                       type="number"
                       value={food.quantity}
                       onChange={(e) => updateQty(food.id, e.target.value)}
-                      className="w-20 px-2 py-1 bg-black/30 rounded"
+                      className="w-20 px-2 py-1 bg-black/30 border border-white/10 rounded-lg text-center"
                     />
 
                     <button
                       onClick={() => removeFood(food.id)}
-                      className="text-red-400"
+                      className="text-red-400 hover:text-red-300"
                     >
                       ✕
                     </button>
@@ -236,14 +232,14 @@ export default function Diet() {
           </div>
 
           {/* TOTAL */}
-          <div className="text-2xl font-bold">
+          <div className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text">
             Total Calories: {totalCalories} kcal 🔥
           </div>
 
-          {/* SAVE */}
+          {/* SAVE BUTTON */}
           <button
             onClick={handleSave}
-            className="bg-green-500 px-6 py-3 rounded-xl font-semibold"
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 py-3 rounded-xl font-semibold hover:scale-[1.02] transition shadow-lg"
           >
             Save {mealType}
           </button>

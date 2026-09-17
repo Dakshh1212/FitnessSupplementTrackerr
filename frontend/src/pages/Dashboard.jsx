@@ -71,55 +71,36 @@ export default function Dashboard() {
   ========================= */
   const calculateStreak = (data = []) => {
 
-    if (!Array.isArray(data)) return 0;
-
+    if (!Array.isArray(data) || data.length === 0) return 0;
+  
     const dates = data
-      .map((d) =>
-        new Date(
-          d.date || d.created_at
-        ).toDateString()
-      );
-
-    const uniqueDates = [
-      ...new Set(dates)
-    ];
-
-    uniqueDates.sort(
-      (a, b) =>
-        new Date(b) - new Date(a)
-    );
-
+      .map(d => {
+        const date = new Date(d.created_at);
+        if (isNaN(date.getTime())) return null;
+  
+        date.setHours(0, 0, 0, 0);
+        return date.getTime();
+      })
+      .filter(Boolean);
+  
+    const unique = [...new Set(dates)].sort((a, b) => b - a);
+  
     let streak = 0;
-
-    let currentDate = new Date();
-
-    for (let i = 0; i < uniqueDates.length; i++) {
-
-      const itemDate = new Date(
-        uniqueDates[i]
-      );
-
-      if (
-        itemDate.toDateString() ===
-        currentDate.toDateString()
-      ) {
-
+  
+    let current = new Date();
+    current.setHours(0, 0, 0, 0);
+  
+    for (let i = 0; i < unique.length; i++) {
+  
+      if (unique[i] === current.getTime()) {
         streak++;
-
-        currentDate.setDate(
-          currentDate.getDate() - 1
-        );
-
+        current.setDate(current.getDate() - 1);
       } else {
-
         break;
-
       }
-
     }
-
+  
     return streak;
-
   };
 
   /* =========================

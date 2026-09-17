@@ -17,7 +17,6 @@ export default function SupplementPlan() {
   const [planName, setPlanName] = useState("");
   const [goal, setGoal] = useState("");
 
-  /* ================= FETCH ================= */
   useEffect(() => {
     fetchData();
   }, []);
@@ -36,12 +35,10 @@ export default function SupplementPlan() {
 
   /* ================= SELECT ================= */
   const handleSelect = (supp) => {
-    const id = supp.id;
-
-    const exists = selected.find(s => s.id === id);
+    const exists = selected.find(s => s.id === supp.id);
 
     if (exists) {
-      setSelected(selected.filter(s => s.id !== id));
+      setSelected(selected.filter(s => s.id !== supp.id));
     } else {
       setSelected([
         ...selected,
@@ -65,7 +62,6 @@ export default function SupplementPlan() {
   /* ================= CREATE PLAN ================= */
   const handleCreate = async () => {
     try {
-
       if (!planName || selected.length === 0) {
         return alert("Fill details ❌");
       }
@@ -86,7 +82,6 @@ export default function SupplementPlan() {
       setPlanName("");
       setGoal("");
       setSelected([]);
-
       fetchData();
 
     } catch (err) {
@@ -95,14 +90,13 @@ export default function SupplementPlan() {
     }
   };
 
-  /* ================= COST ================= */
   const totalCost = selected.reduce(
     (acc, s) => acc + (Number(s.price) || 0),
     0
   );
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen bg-[#020617] text-white">
 
       <Sidebar />
 
@@ -110,103 +104,148 @@ export default function SupplementPlan() {
 
         <Navbar />
 
-        <div className="p-6 bg-[#020617] text-white min-h-screen space-y-6">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
 
-          <h1 className="text-3xl font-bold text-green-400">
-            Supplement Plans 💊
-          </h1>
+          {/* HEADER */}
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text">
+              Supplement Plans 💊
+            </h1>
+            <p className="text-gray-400">
+              Build your nutrition stack like a pro
+            </p>
+          </div>
 
-          {/* CREATE */}
-          <div className="bg-[#1e293b] p-5 rounded-xl space-y-3">
+          {/* CREATE SECTION */}
+          <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-3">
 
             <input
               placeholder="Plan Name"
               value={planName}
               onChange={e => setPlanName(e.target.value)}
-              className="w-full p-2 bg-[#020617] border border-gray-700"
+              className="w-full p-3 rounded-xl bg-black/30 border border-white/10"
             />
 
             <input
               placeholder="Goal"
               value={goal}
               onChange={e => setGoal(e.target.value)}
-              className="w-full p-2 bg-[#020617] border border-gray-700"
+              className="w-full p-3 rounded-xl bg-black/30 border border-white/10"
             />
 
-            <p className="text-green-400">
-              ₹{totalCost}
+            <p className="text-green-400 font-semibold">
+              Total Cost: ₹{totalCost}
             </p>
 
           </div>
 
-          {/* GRID */}
-          <div className="grid grid-cols-4 gap-4">
+          {/* GRID (APPLE STYLE FIXED) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
 
             {supplements.map(s => {
 
-              const selectedItem =
-                selected.find(x => x.id === s.id);
+              const selectedItem = selected.find(x => x.id === s.id);
 
               return (
                 <div
                   key={s.id}
                   onClick={() => handleSelect(s)}
-                  className={`p-3 bg-[#1e293b] rounded-xl cursor-pointer ${
+                  className={`cursor-pointer bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition ${
                     selectedItem ? "ring-2 ring-green-400" : ""
                   }`}
                 >
 
-                  <img
-                    src={s.imageUrl}
-                    className="h-24 w-full object-contain"
-                  />
+                  {/* IMAGE FIX */}
+                  <div className="aspect-square bg-black/20 overflow-hidden">
+                    <img
+                      src={s.imageUrl}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
 
-                  <p className="text-center">{s.name}</p>
-                  <p className="text-center text-gray-400">
-                    ₹{s.price}
-                  </p>
+                  <div className="p-3 text-center">
+
+                    <p className="text-sm font-semibold truncate">
+                      {s.name}
+                    </p>
+
+                    <p className="text-xs text-gray-400">
+                      ₹{s.price}
+                    </p>
+
+                    {/* 💥 BUY LINK BUTTON (BUS LINK FIX) */}
+                    {s.buyLink && (
+                      <a
+                        href={s.buyLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-block mt-2 text-xs px-3 py-1 rounded-full bg-green-500 text-black font-semibold hover:bg-green-400 transition"
+                      >
+                        Buy Now →
+                      </a>
+                    )}
+
+                  </div>
 
                 </div>
               );
             })}
+
           </div>
 
           {/* CONFIG */}
-          <div className="bg-[#1e293b] p-5 rounded-xl">
+          <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-3">
 
-            {selected.map((s, i) => (
-              <div key={i} className="flex justify-between mb-2">
+            <h2 className="font-semibold text-lg">
+              Selected Supplements
+            </h2>
 
-                <span>{s.name}</span>
+            {selected.length === 0 ? (
+              <p className="text-gray-400">No supplements selected</p>
+            ) : (
+              selected.map((s, i) => (
+                <div key={i} className="flex justify-between items-center border-b border-white/10 py-2">
 
-                <input
-                  type="number"
-                  value={s.dosage.amount}
-                  onChange={(e) => updateDosage(i, e.target.value)}
-                  className="w-20 text-black"
-                />
+                  <span>{s.name}</span>
 
-              </div>
-            ))}
+                  <input
+                    type="number"
+                    value={s.dosage.amount}
+                    onChange={(e) => updateDosage(i, e.target.value)}
+                    className="w-20 px-2 py-1 bg-black/30 border border-white/10 rounded-lg text-center"
+                  />
+
+                </div>
+              ))
+            )}
 
           </div>
 
           {/* SAVE */}
           <button
             onClick={handleCreate}
-            className="w-full bg-green-500 py-2 rounded"
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 py-3 rounded-xl font-semibold hover:scale-[1.02] transition"
           >
             Save Plan 🚀
           </button>
 
           {/* HISTORY */}
-          <div>
+          <div className="bg-white/5 border border-white/10 p-5 rounded-2xl">
+
+            <h2 className="font-semibold mb-3">
+              Previous Plans
+            </h2>
+
             {plans.map(p => (
-              <div key={p.id} className="border-b py-2">
-                <p>{p.name}</p>
+              <div key={p.id} className="border-b border-white/10 py-2">
+
+                <p className="font-medium">{p.name}</p>
                 <p className="text-sm text-gray-400">{p.goal}</p>
+
               </div>
             ))}
+
           </div>
 
         </div>

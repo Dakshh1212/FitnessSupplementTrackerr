@@ -11,44 +11,27 @@ import Step5 from "./Step5";
 export default function Onboarding() {
 
   const [step, setStep] = useState(1);
-
   const [data, setData] = useState({});
 
   const navigate = useNavigate();
 
-  /* ======================
-     ✅ CHECK TOKEN
-  ====================== */
+  /* ================= AUTH CHECK ================= */
   useEffect(() => {
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      navigate("/");
-    }
-
+    const token = localStorage.getItem("token");
+    if (!token) navigate("/");
   }, [navigate]);
 
-  /* ======================
-     ✅ NEXT STEP
-  ====================== */
+  /* ================= NEXT STEP ================= */
   const next = (values) => {
-
-    setData((prev) => ({
+    setData(prev => ({
       ...prev,
       ...values
     }));
-
-    setStep((prev) => prev + 1);
-
+    setStep(prev => prev + 1);
   };
 
-  /* ======================
-     ✅ FINAL SUBMIT
-  ====================== */
+  /* ================= SUBMIT ================= */
   const submit = async (values) => {
-
     try {
 
       const finalData = {
@@ -56,67 +39,74 @@ export default function Onboarding() {
         ...values
       };
 
-      // ✅ API CALL
       await completeOnboarding(finalData);
 
-      // ✅ UPDATE LOCAL USER
-      const oldUser = JSON.parse(
-        localStorage.getItem("user")
-      );
+      const oldUser = JSON.parse(localStorage.getItem("user"));
 
       localStorage.setItem(
         "user",
         JSON.stringify({
           ...oldUser,
+          ...finalData,
           isOnboardingComplete: true
         })
       );
 
-      // ✅ GO DASHBOARD
       navigate("/dashboard");
 
     } catch (err) {
-
       console.log(err);
-
       alert("Onboarding failed ❌");
-
     }
-
   };
 
   return (
-    <div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white relative overflow-hidden px-4">
 
-      {/* PROGRESS BAR */}
-      <div className="w-full bg-gray-800 h-2">
+      {/* GLOW BACKGROUND */}
+      <div className="absolute w-[400px] h-[400px] bg-blue-500 opacity-20 blur-3xl rounded-full top-10 left-10"></div>
+      <div className="absolute w-[300px] h-[300px] bg-purple-500 opacity-20 blur-3xl rounded-full bottom-10 right-10"></div>
 
-        <div
-          className="bg-blue-500 h-2 transition-all"
-          style={{
-            width: `${(step / 5) * 100}%`
-          }}
-        />
+      {/* CARD */}
+      <div className="w-full max-w-2xl bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl p-6 space-y-6 z-10">
+
+        {/* HEADER */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 text-transparent bg-clip-text">
+            Personalize Your Fitness Journey 🚀
+          </h1>
+
+          <p className="text-gray-400 text-sm">
+            Step {step} of 4 — Setup your perfect fitness profile
+          </p>
+        </div>
+
+        {/* PROGRESS BAR */}
+        <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300"
+            style={{
+              width: `${(step / 4) * 100}%`
+            }}
+          />
+        </div>
+
+        {/* STEP CONTENT CARD */}
+        <div className="bg-black/20 border border-white/10 rounded-xl p-4">
+
+          {step === 1 && <Step2 next={next} />}
+          {step === 2 && <Step3 next={next} />}
+          {step === 3 && <Step4 next={next} />}
+          {step === 4 && <Step5 submit={submit} />}
+
+        </div>
+
+        {/* FOOTER TIP */}
+        <p className="text-center text-xs text-gray-500">
+          This helps us generate your personalized diet & workout plan
+        </p>
 
       </div>
-
-      {/* STEPS */}
-      {step === 1 && (
-        <Step2 next={next} />
-      )}
-
-      {step === 2 && (
-        <Step3 next={next} />
-      )}
-
-      {step === 3 && (
-        <Step4 next={next} />
-      )}
-
-      {step === 4 && (
-        <Step5 submit={submit} />
-      )}
-
     </div>
   );
 }
