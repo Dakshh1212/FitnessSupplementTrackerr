@@ -1,95 +1,80 @@
+
 import axios from "axios";
 
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:5002/api";
+
 const API = axios.create({
-  baseURL: "http://localhost:5002/api"
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    Accept: "application/json",
+  },
 });
 
 /* =========================
-   🔐 REQUEST INTERCEPTOR
+   REQUEST INTERCEPTOR
 ========================= */
 API.interceptors.request.use(
+  (config) => {
+    // Browser-only authentication storage.
+    if (typeof window !== "undefined") {
+      const token = window.localStorage.getItem("token");
 
-  (req) => {
-
-    const token =
-      localStorage.getItem("token");
-
-    if (token) {
-
-      req.headers.Authorization =
-        `Bearer ${token}`;
-
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
-    return req;
-
+    return config;
   },
-
-  (error) => {
-
-    return Promise.reject(error);
-
-  }
-
+  (error) => Promise.reject(error)
 );
 
 /* =========================
-   🚨 RESPONSE INTERCEPTOR
+   RESPONSE INTERCEPTOR
 ========================= */
 API.interceptors.response.use(
-
-  (res) => {
-
-    return res;
-
-  },
-
+  (response) => response,
   (error) => {
+    const status = error?.response?.status;
+    const requestUrl = error?.config?.url || "";
 
-    const status =
-      error.response?.status;
+    if (status === 401 && typeof window !== "undefined") {
+      // Don't redirect when login or registration itself fails.
+      const isAuthRequest =
+        /\/auth\/(login|register|signup)(?:[/?]|$)/i.test(requestUrl);
 
-    // 🔒 UNAUTHORIZED
-    if (status === 401) {
+      if (!isAuthRequest) {
+        const token = window.localStorage.getItem("token");
 
-      console.log(
-        "Session expired 🔒"
-      );
+        // Only clear an existing session when an authenticated request
+        // is rejected. Preserve the user's current login/signup form.
+        if (token) {
+          window.localStorage.removeItem("token");
+          window.localStorage.removeItem("user");
 
-      localStorage.removeItem(
-        "token"
-      );
+          const isAlreadyOnLoginPage =
+            window.location.pathname === "/" ||
+            window.location.pathname === "/login";
 
-      localStorage.removeItem(
-        "user"
-      );
-
-      window.location.href = "/";
-
+          if (!isAlreadyOnLoginPage) {
+            window.location.replace("/");
+          }
+        }
+      }
     }
 
-    // ❌ SERVER ERROR
-    if (status === 500) {
-
-      console.log(
-        "Server error ❌"
-      );
-
-    }
-
-    // ❌ NOT FOUND
-    if (status === 404) {
-
-      console.log(
-        "API route not found ❌"
-      );
-
+    if (!error?.response) {
+      error.message =
+        error.code === "ECONNABORTED"
+          ? "The server took too long to respond. Please try again."
+          : "Unable to connect to the server. Check that the backend is running.";
     }
 
     return Promise.reject(error);
-
   }
-
 );
 
 export default API;

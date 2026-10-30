@@ -1,251 +1,503 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import API from "../services/api";
 
-export default function Diet() {
+const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
+const FALLBACK_IMAGE =
+  "https://placehold.co/600x400/111827/9ca3af?text=Food";
 
+const toNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+
+export default function Diet() {
   const [foods, setFoods] = useState([]);
   const [search, setSearch] = useState("");
   const [mealType, setMealType] = useState("breakfast");
   const [selectedFoods, setSelectedFoods] = useState([]);
-  const [totalCalories, setTotalCalories] = useState(0);
+  const [loadingFoods, setLoadingFoods] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  /* ================= FETCH FOODS ================= */
   useEffect(() => {
+    let active = true;
+
     const fetchFoods = async () => {
       try {
-        const res = await API.get("/diet/foods");
-        setFoods(res.data.data || []);
+        setLoadingFoods(true);
+        setError("");
+
+        const response = await API.get("/diet/foods");
+        const result = response?.data?.data;
+
+        if (!Array.isArray(result)) {
+          throw new Error("The server returned an invalid food list.");
+        }
+
+        if (active) {
+          setFoods(result);
+        }
       } catch (err) {
-        console.log(err);
-        setFoods([]);
+        if (active) {
+          setFoods([]);
+          setError(
+            err?.response?.data?.message ||
+              "Could not load foods. Please try again."
+          );
+        }
+      } finally {
+        if (active) setLoadingFoods(false);
       }
     };
+
     fetchFoods();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  /* ================= ADD FOOD ================= */
+  const filteredFoods = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return foods.filter((food) =>
+      String(food.name || "").toLowerCase().includes(query)
+    );
+  }, [foods, search]);
+
+  const nutritionTotals = useMemo(() => {
+    return selectedFoods.reduce(
+      (totals, food) => {
+        const multiplier = food.quantity / 100;
+
+        totals.calories += toNumber(food.calories) * multiplier;
+        totals.protein += toNumber(food.protein) * multiplier;
+        totals.carbs += toNumber(food.carbs) * multiplier;
+        totals.fats += toNumber(food.fats) * multiplier;
+
+        return totals;
+      },
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+  }, [selectedFoods]);
+
   const addFood = (food) => {
-    const id = food.id;
+    const id = food.id ?? food.food_id;
 
-    if (selectedFoods.find(f => f.id === id)) return;
+    if (id == null) {
+      setNotice("This food has no valid ID and cannot be added.");
+      return;
+    }
 
-    setSelectedFoods(prev => [
-      ...prev,
-      {
-        id,
-        name: food.name,
-        calories: food.calories,
-        imageUrl: food.imageUrl,
-        quantity: 100
+    setNotice("");
+    setError("");
+
+    setSelectedFoods((previous) => {
+      if (previous.some((item) => String(item.id) === String(id))) {
+        setNotice(`${food.name} is already in your meal.`);
+        return previous;
       }
-    ]);
+
+      return [
+        ...previous,
+        {
+          id,
+          name: food.name,
+          calories: toNumber(food.calories),
+          protein: toNumber(food.protein),
+          carbs: toNumber(food.carbs),
+          fats: toNumber(food.fats),
+          imageUrl: food.imageUrl || food.image_url || "",
+          quantity: 100,
+        },
+      ];
+    });
   };
 
-  /* ================= REMOVE FOOD ================= */
   const removeFood = (id) => {
-    setSelectedFoods(prev => prev.filter(f => f.id !== id));
+    setSelectedFoods((previous) =>
+      previous.filter((food) => String(food.id) !== String(id))
+    );
   };
 
-  /* ================= UPDATE QTY ================= */
   const updateQty = (id, value) => {
-    setSelectedFoods(prev =>
-      prev.map(f =>
-        f.id === id ? { ...f, quantity: Number(value) } : f
+    // Keep the input editable while typing; validate on save.
+    setSelectedFoods((previous) =>
+      previous.map((food) =>
+        String(food.id) === String(id)
+          ? { ...food, quantity: value === "" ? "" : value }
+          : food
       )
     );
   };
 
-  /* ================= CALORIES ================= */
-  useEffect(() => {
-    let total = 0;
+  const handleSave = async () => {
+    if (saving) return;
 
-    selectedFoods.forEach(f => {
-      total += (f.calories * f.quantity) / 100;
+    if (selectedFoods.length === 0) {
+      setError("Add at least one food before saving.");
+      setNotice("");
+      return;
+    }
+
+    const invalidFood = selectedFoods.find((food) => {
+      const quantity = Number(food.quantity);
+      return (
+        !Number.isFinite(quantity) ||
+        quantity <= 0 ||
+        quantity > 10000
+      );
     });
 
-    setTotalCalories(Math.round(total));
-  }, [selectedFoods]);
+    if (invalidFood) {
+      setError(
+        `Enter a quantity between 1 and 10,000 grams for ${invalidFood.name}.`
+      );
+      setNotice("");
+      return;
+    }
 
-  /* ================= SAVE ================= */
-  const handleSave = async () => {
-    if (!selectedFoods.length) return alert("Add food first");
+    setSaving(true);
+    setError("");
+    setNotice("");
+
+    let savedCount = 0;
 
     try {
       for (const food of selectedFoods) {
         await API.post("/diet/entries", {
           food_id: food.id,
-          quantity: food.quantity,
-          mealType
+          quantity: Number(food.quantity),
+          mealType,
         });
+
+        savedCount += 1;
       }
 
-      alert("Meal Saved ✅");
+      setNotice(
+        `Successfully saved ${savedCount} food item${
+          savedCount === 1 ? "" : "s"
+        } for ${mealType}.`
+      );
       setSelectedFoods([]);
-
     } catch (err) {
-      console.log(err);
-      alert("Error saving meal ❌");
+      const message =
+        err?.response?.data?.message ||
+        err.message ||
+        "An unexpected error occurred.";
+
+      if (savedCount > 0) {
+        setError(
+          `${savedCount} item(s) were saved, but the next item failed. ` +
+            `Please check your diet entries before retrying. Details: ${message}`
+        );
+
+        // Remove successfully saved items so they aren't accidentally
+        // submitted again when the user retries.
+        setSelectedFoods((previous) =>
+          previous.filter(
+            (food) =>
+              !selectedFoods
+                .slice(0, savedCount)
+                .some((saved) => String(saved.id) === String(food.id))
+          )
+        );
+      } else {
+        setError(`Could not save your meal. ${message}`);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
-  const filteredFoods = foods.filter(f =>
-    f.name.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div className="flex min-h-screen bg-[#020617] text-white">
-
+    <div className="min-h-screen bg-[#080d19] text-white">
       <Sidebar />
 
-      <div className="flex-1">
-
+      <div className="min-h-screen lg:ml-64">
         <Navbar />
 
-        {/* MAIN CONTAINER */}
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
-
-          {/* HEADER */}
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text">
-              Diet Tracker 🍎
-            </h1>
-            <p className="text-gray-400 mt-1">
-              Clean & Smart Nutrition Tracking
+        <main className="mx-auto max-w-7xl space-y-7 px-4 pb-10 pt-20 sm:px-6 lg:px-8 lg:pt-8">
+          <header>
+            <p className="text-sm font-medium text-emerald-400">
+              NUTRITION TRACKER
             </p>
-          </div>
 
-          {/* MEAL TYPE */}
-          <div className="flex flex-wrap gap-3">
+            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
+              Diet Tracker <span aria-hidden="true">🥗</span>
+            </h1>
 
-            {["breakfast", "lunch", "dinner", "snack"].map(type => (
-              <button
-                key={type}
-                onClick={() => setMealType(type)}
-                className={`px-4 py-2 rounded-full text-sm transition ${
-                  mealType === type
-                    ? "bg-green-500 text-black"
-                    : "bg-white/10 hover:bg-white/20"
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+            <p className="mt-2 text-sm text-gray-400 sm:text-base">
+              Build your meal, adjust portions, and track your nutrition.
+            </p>
+          </header>
 
-          </div>
+          {error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+            >
+              {error}
+            </div>
+          )}
 
-          {/* SEARCH */}
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search food..."
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-green-400"
-          />
+          {notice && (
+            <div
+              role="status"
+              className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+            >
+              {notice}
+            </div>
+          )}
 
-          {/* FOOD GRID (FIXED RESPONSIVE + SIZE CONTROL) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold">Choose your meal</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Select the meal category for the foods you add.
+              </p>
+            </div>
 
-            {filteredFoods.map(food => (
-              <div
-                key={food.id}
-                onClick={() => addFood(food)}
-                className="group cursor-pointer bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:bg-white/10 transition"
-              >
+            <div className="flex flex-wrap gap-2">
+              {MEAL_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setMealType(type)}
+                  aria-pressed={mealType === type}
+                  className={`rounded-xl px-4 py-2.5 text-sm font-medium capitalize transition ${
+                    mealType === type
+                      ? "bg-emerald-400 text-gray-950"
+                      : "border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </section>
 
-                {/* FIXED IMAGE HEIGHT */}
-                <div className="h-24 sm:h-28 w-full overflow-hidden bg-black/20">
-                  <img
-                    src={food.imageUrl}
-                    className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                    onError={(e) => {
-                      e.target.src = "https://via.placeholder.com/300";
-                    }}
-                  />
-                </div>
-
-                {/* TEXT */}
-                <div className="p-3">
-                  <p className="font-semibold text-sm truncate">
-                    {food.name}
-                  </p>
-
-                  <p className="text-xs text-gray-400">
-                    {food.calories} kcal / 100g
-                  </p>
-
-                  <p className="text-xs text-green-400 opacity-0 group-hover:opacity-100 transition">
-                    Tap to add →
-                  </p>
-                </div>
-
+          <section>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Available foods</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  {filteredFoods.length} food item(s) found
+                </p>
               </div>
-            ))}
 
-          </div>
+              <label className="block w-full sm:max-w-sm">
+                <span className="sr-only">Search foods</span>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search foods..."
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition placeholder:text-gray-500 focus:border-emerald-400/60"
+                />
+              </label>
+            </div>
 
-          {/* MEAL BUILDER */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            {loadingFoods ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center text-gray-400">
+                Loading foods...
+              </div>
+            ) : error && foods.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
+                <p className="text-gray-300">Your food list is unavailable.</p>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-3 rounded-lg bg-emerald-400 px-4 py-2 font-medium text-gray-950"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : filteredFoods.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-gray-400">
+                No matching foods found. Try another search.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 xl:grid-cols-5">
+                {filteredFoods.map((food) => {
+                  const id = food.id ?? food.food_id;
+                  const isSelected = selectedFoods.some(
+                    (item) => String(item.id) === String(id)
+                  );
 
-            <h2 className="text-xl font-semibold mb-4">
-              Meal Builder 🍽️
-            </h2>
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => addFood(food)}
+                      aria-pressed={isSelected}
+                      className={`group overflow-hidden rounded-2xl border text-left transition hover:-translate-y-0.5 ${
+                        isSelected
+                          ? "border-emerald-400/60 bg-emerald-400/10"
+                          : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <div className="h-28 overflow-hidden bg-black/20 sm:h-36">
+                        <img
+                          src={food.imageUrl || food.image_url || FALLBACK_IMAGE}
+                          alt={food.name || "Food"}
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = FALLBACK_IMAGE;
+                          }}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                      </div>
+
+                      <div className="p-3 sm:p-4">
+                        <p className="truncate text-sm font-semibold">
+                          {food.name}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {toNumber(food.calories)} kcal / 100 g
+                        </p>
+                        <p className="mt-3 text-xs font-medium text-emerald-400">
+                          {isSelected ? "Added ✓" : "+ Add food"}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">Meal builder</h2>
+                <p className="mt-1 text-sm capitalize text-gray-400">
+                  {mealType} · {selectedFoods.length} item(s)
+                </p>
+              </div>
+
+              {selectedFoods.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFoods([])}
+                  disabled={saving}
+                  className="text-sm text-red-300 transition hover:text-red-200 disabled:opacity-50"
+                >
+                  Clear meal
+                </button>
+              )}
+            </div>
 
             {selectedFoods.length === 0 ? (
-              <p className="text-gray-400">No foods selected</p>
+              <div className="rounded-xl border border-dashed border-white/10 px-4 py-10 text-center">
+                <p className="text-3xl" aria-hidden="true">🍽️</p>
+                <p className="mt-3 font-medium text-gray-300">
+                  Your meal is empty
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Choose foods above to start building your meal.
+                </p>
+              </div>
             ) : (
-              selectedFoods.map(food => (
-                <div
-                  key={food.id}
-                  className="flex justify-between items-center py-3 border-b border-white/10"
-                >
+              <div className="space-y-3">
+                {selectedFoods.map((food) => {
+                  const calories =
+                    (toNumber(food.calories) * toNumber(food.quantity)) / 100;
 
-                  <div>
-                    <p className="font-medium">{food.name}</p>
-                    <p className="text-xs text-gray-400">
-                      {(food.calories * food.quantity / 100).toFixed(0)} kcal
+                  return (
+                    <div
+                      key={food.id}
+                      className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/10 p-3 sm:p-4"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{food.name}</p>
+                        <p className="mt-1 text-sm text-emerald-400">
+                          {Math.round(calories)} kcal
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-xs text-gray-400">
+                          <span>Grams</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10000"
+                            step="1"
+                            value={food.quantity}
+                            onChange={(event) =>
+                              updateQty(food.id, event.target.value)
+                            }
+                            disabled={saving}
+                            aria-label={`${food.name} quantity in grams`}
+                            className="w-24 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-center text-sm text-white outline-none focus:border-emerald-400/60 disabled:opacity-50"
+                          />
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => removeFood(food.id)}
+                          disabled={saving}
+                          aria-label={`Remove ${food.name}`}
+                          className="rounded-lg px-3 py-2 text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.05] p-4 sm:p-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-sm text-gray-400">Total meal calories</p>
+                <p className="mt-1 text-3xl font-bold text-emerald-300">
+                  {Math.round(nutritionTotals.calories).toLocaleString()}{" "}
+                  <span className="text-base font-medium text-gray-400">
+                    kcal
+                  </span>
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center sm:gap-6">
+                {[
+                  ["Protein", nutritionTotals.protein],
+                  ["Carbs", nutritionTotals.carbs],
+                  ["Fats", nutritionTotals.fats],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-200">
+                      {Math.round(value)} g
                     </p>
                   </div>
+                ))}
+              </div>
+            </div>
 
-                  <div className="flex items-center gap-3">
+            <p className="mt-3 text-xs text-gray-500">
+              Macro totals depend on the nutrition data returned for each food.
+            </p>
 
-                    <input
-                      type="number"
-                      value={food.quantity}
-                      onChange={(e) => updateQty(food.id, e.target.value)}
-                      className="w-20 px-2 py-1 bg-black/30 border border-white/10 rounded-lg text-center"
-                    />
-
-                    <button
-                      onClick={() => removeFood(food.id)}
-                      className="text-red-400 hover:text-red-300"
-                    >
-                      ✕
-                    </button>
-
-                  </div>
-
-                </div>
-              ))
-            )}
-
-          </div>
-
-          {/* TOTAL */}
-          <div className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 text-transparent bg-clip-text">
-            Total Calories: {totalCalories} kcal 🔥
-          </div>
-
-          {/* SAVE BUTTON */}
-          <button
-            onClick={handleSave}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 py-3 rounded-xl font-semibold hover:scale-[1.02] transition shadow-lg"
-          >
-            Save {mealType}
-          </button>
-
-        </div>
-
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || selectedFoods.length === 0}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 py-3.5 font-semibold text-gray-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? "Saving meal..." : `Save ${mealType}`}
+            </button>
+          </section>
+        </main>
       </div>
     </div>
   );

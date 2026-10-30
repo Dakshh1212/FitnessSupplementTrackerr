@@ -1,56 +1,98 @@
-// backend/controllers/userController.js
 
-const User = require('../models/User');
+const db = require("../config/mysql");
 
-// ✅ Get all users
+function logDatabaseError(label, error) {
+  console.error(`${label}:`, error.message);
+}
+
+/* ======================
+   GET ALL USERS — ADMIN
+====================== */
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    const [users] = await db.promise().query(
+      `SELECT
+         id,
+         name,
+         email,
+         role,
+         height,
+         weight,
+         age,
+         gender,
+         goal,
+         activityLevel,
+         isOnboardingComplete,
+         created_at
+       FROM users
+       ORDER BY id DESC`
+    );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: users.length,
       users,
     });
   } catch (error) {
-    console.error('GET ALL USERS ERROR:', error);
-    res.status(500).json({
+    logDatabaseError("GET ALL USERS ERROR", error);
+
+    return res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: "Unable to load users.",
     });
   }
 };
 
-// ✅ Get logged-in user profile
+/* ======================
+   GET LOGGED-IN USER
+====================== */
 exports.getUserProfile = async (req, res) => {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required.",
+    });
+  }
+
   try {
-    // req.user comes from auth middleware (JWT)
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        success: false,
-        message: 'Not authorized',
-      });
-    }
+    const [users] = await db.promise().query(
+      `SELECT
+         id,
+         name,
+         email,
+         role,
+         height,
+         weight,
+         age,
+         gender,
+         goal,
+         activityLevel,
+         photo,
+         isOnboardingComplete,
+         created_at
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+      [req.user.id]
+    );
 
-    const user = await User.findById(req.user.id).select('-password');
-
-    if (!user) {
+    if (users.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'User not found',
+        message: "User not found.",
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      user,
+      user: users[0],
     });
-
   } catch (error) {
-    console.error('GET PROFILE ERROR:', error);
-    res.status(500).json({
+    logDatabaseError("GET PROFILE ERROR", error);
+
+    return res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: "Unable to load your profile.",
     });
   }
 };

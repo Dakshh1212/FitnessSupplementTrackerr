@@ -1,91 +1,76 @@
+
 const db = require("../config/mysql");
 
-/* =======================
-   ✅ GET ALL EXERCISES
-======================= */
-const getExercises = () => {
+/**
+ * Get all available exercises.
+ */
+const getExercises = async () => {
+  const [rows] = await db.promise().query(
+    "SELECT * FROM exercises ORDER BY id ASC"
+  );
 
-  return new Promise((resolve, reject) => {
-
-    db.query(
-      "SELECT * FROM exercises",
-      (err, results) => {
-
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results);
-        }
-
-      }
-    );
-
-  });
-
+  return rows;
 };
 
-/* =======================
-   ✅ GET EXERCISE BY ID
-======================= */
-const getExerciseById = (id) => {
+/**
+ * Get one exercise by ID.
+ */
+const getExerciseById = async (id) => {
+  const exerciseId = Number(id);
 
-  return new Promise((resolve, reject) => {
+  if (!Number.isSafeInteger(exerciseId) || exerciseId <= 0) {
+    return null;
+  }
 
-    db.query(
-      "SELECT * FROM exercises WHERE id = ?",
-      [id],
-      (err, results) => {
+  const [rows] = await db.promise().query(
+    "SELECT * FROM exercises WHERE id = ? LIMIT 1",
+    [exerciseId]
+  );
 
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results[0]);
-        }
-
-      }
-    );
-
-  });
-
+  return rows[0] || null;
 };
 
-/* =======================
-   ✅ CREATE WORKOUT SESSION
-======================= */
-const createWorkoutSession = (
+/**
+ * Create a workout session.
+ */
+const createWorkoutSession = async (
   userId,
   totalDuration,
   totalCaloriesBurned
 ) => {
+  const parsedUserId = Number(userId);
+  const parsedDuration = Number(totalDuration);
+  const parsedCalories = Number(totalCaloriesBurned);
 
-  return new Promise((resolve, reject) => {
+  if (!Number.isSafeInteger(parsedUserId) || parsedUserId <= 0) {
+    throw new Error("A valid user ID is required.");
+  }
 
-    db.query(
-      `INSERT INTO workout_sessions
+  if (
+    !Number.isFinite(parsedDuration) ||
+    parsedDuration < 0 ||
+    !Number.isFinite(parsedCalories) ||
+    parsedCalories < 0
+  ) {
+    throw new Error("Workout duration and calories must be valid non-negative numbers.");
+  }
+
+  const [result] = await db.promise().query(
+    `INSERT INTO workout_sessions
       (user_id, totalDuration, totalCaloriesBurned)
-      VALUES (?, ?, ?)`,
-      [
-        userId,
-        totalDuration,
-        totalCaloriesBurned
-      ],
-      (err, result) => {
+     VALUES (?, ?, ?)`,
+    [
+      parsedUserId,
+      parsedDuration,
+      parsedCalories,
+    ]
+  );
 
-        if (err) {
-          reject(err);
-        } else {
-          resolve(result);
-        }
-
-      }
-    );
-
-  });
-
+  return result;
 };
 
 module.exports = {
   getExercises,
   getExerciseById,
-  createWorkoutSession
+  createWorkoutSession,
 };

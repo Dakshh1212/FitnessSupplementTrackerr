@@ -1,124 +1,113 @@
+
 const db = require("../config/mysql");
 const bcrypt = require("bcryptjs");
 
-/* ======================
-   ✅ CREATE USER
-====================== */
-const createUser = async (userData) => {
+const BCRYPT_ROUNDS = 12;
 
-  const {
-    name,
-    email,
-    password,
-    role = "user"
-  } = userData;
-
-  // ✅ HASH PASSWORD
-  const salt = await bcrypt.genSalt(10);
-
-  const hashedPassword =
-    await bcrypt.hash(password, salt);
-
-  return new Promise((resolve, reject) => {
-
-    db.query(
-      `INSERT INTO users
-      (
-        name,
-        email,
-        password,
-        role
-      )
-      VALUES (?, ?, ?, ?)`,
-      [
-        name,
-        email,
-        hashedPassword,
-        role
-      ],
-      (err, result) => {
-
-        if (err) {
-          reject(err);
-        } else {
-          resolve(result);
-        }
-
-      }
-    );
-
-  });
-
-};
+function normalizeEmail(email) {
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
 
 /* ======================
-   ✅ FIND USER BY EMAIL
+   CREATE USER
 ====================== */
-const findUserByEmail = (email) => {
+async function createUser(userData) {
+  if (!userData || typeof userData !== "object") {
+    throw new TypeError("Valid user data is required.");
+  }
 
-  return new Promise((resolve, reject) => {
+  const name =
+    typeof userData.name === "string" ? userData.name.trim() : "";
+  const email = normalizeEmail(userData.email);
+  const password = userData.password;
+  const role = userData.role || "user";
 
-    db.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email],
-      (err, results) => {
+  if (!name || name.length > 100) {
+    throw new TypeError("Name must contain 1–100 characters.");
+  }
 
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results[0]);
-        }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new TypeError("A valid email address is required.");
+  }
 
-      }
-    );
+  if (
+    typeof password !== "string" ||
+    password.length < 8 ||
+    Buffer.byteLength(password, "utf8") > 72
+  ) {
+    throw new TypeError("Password must be at least 8 characters and within the supported length.");
+  }
 
-  });
+  if (!["user", "admin"].includes(role)) {
+    throw new TypeError("Invalid user role.");
+  }
 
-};
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-/* ======================
-   ✅ FIND USER BY ID
-====================== */
-const findUserById = (id) => {
-
-  return new Promise((resolve, reject) => {
-
-    db.query(
-      "SELECT * FROM users WHERE id = ?",
-      [id],
-      (err, results) => {
-
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results[0]);
-        }
-
-      }
-    );
-
-  });
-
-};
-
-/* ======================
-   ✅ MATCH PASSWORD
-====================== */
-const matchPassword = async (
-  enteredPassword,
-  hashedPassword
-) => {
-
-  return await bcrypt.compare(
-    enteredPassword,
-    hashedPassword
+  const [result] = await db.promise().query(
+    `INSERT INTO users (name, email, password, role)
+     VALUES (?, ?, ?, ?)`,
+    [name, email, hashedPassword, role]
   );
 
-};
+  return result;
+}
+
+/* ======================
+   FIND USER BY EMAIL
+   Internal use: includes password hash.
+====================== */
+async function findUserByEmail(email) {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    return undefined;
+  }
+
+  const [results] = await db.promise().query(
+    "SELECT * FROM users WHERE email = ? LIMIT 1",
+    [normalizedEmail]
+  );
+
+  return results[0];
+}
+
+/* ======================
+   FIND USER BY ID
+   Internal use: includes password hash.
+====================== */
+async function findUserById(id) {
+  const userId = Number(id);
+
+  if (!Number.isSafeInteger(userId) || userId <= 0) {
+    return undefined;
+  }
+
+  const [results] = await db.promise().query(
+    "SELECT * FROM users WHERE id = ? LIMIT 1",
+    [userId]
+  );
+
+  return results[0];
+}
+
+/* ======================
+   MATCH PASSWORD
+====================== */
+async function matchPassword(enteredPassword, hashedPassword) {
+  if (
+    typeof enteredPassword !== "string" ||
+    typeof hashedPassword !== "string"
+  ) {
+    return false;
+  }
+
+  return bcrypt.compare(enteredPassword, hashedPassword);
+}
 
 module.exports = {
   createUser,
   findUserByEmail,
   findUserById,
-  matchPassword
+  matchPassword,
 };

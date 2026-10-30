@@ -1,149 +1,123 @@
+
 import API from "./api";
 
 /* =========================
-   🔑 AUTH
+   AUTH HELPERS
 ========================= */
 
-// ✅ LOGIN
+const saveSession = (data) => {
+  if (!data?.token || !data?.user) {
+    throw new Error("The server returned an invalid authentication response.");
+  }
+
+  try {
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+  } catch {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    throw new Error(
+      "Unable to save your login session. Check your browser settings."
+    );
+  }
+
+  return data;
+};
+
+const updateCachedUser = (user) => {
+  if (!user || typeof user !== "object") return;
+
+  try {
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+    localStorage.setItem(
+      "user",
+      JSON.stringify({ ...currentUser, ...user })
+    );
+  } catch {
+    // The API request can succeed even if local storage is unavailable.
+  }
+};
+
+/* =========================
+   LOGIN
+========================= */
+
 export const loginUser = async (data) => {
+  const response = await API.post("/auth/login", {
+    email: data.email.trim().toLowerCase(),
+    password: data.password,
+  });
 
-  const res = await API.post(
-    "/auth/login",
-    data
-  );
-
-  // 🔥 SAVE TOKEN
-  if (res.data?.token) {
-
-    localStorage.setItem(
-      "token",
-      res.data.token
-    );
-
-  }
-
-  // 🔥 SAVE USER
-  if (res.data?.user) {
-
-    localStorage.setItem(
-      "user",
-      JSON.stringify(res.data.user)
-    );
-
-  }
-
-  return res.data;
-
+  return saveSession(response.data);
 };
 
-// ✅ REGISTER
+/* =========================
+   REGISTER
+========================= */
+
 export const registerUser = async (data) => {
+  const response = await API.post("/auth/register", {
+    name: data.name.trim(),
+    email: data.email.trim().toLowerCase(),
+    password: data.password,
+  });
 
-  const res = await API.post(
-    "/auth/register",
-    data
-  );
-
-  // 🔥 SAVE TOKEN
-  if (res.data?.token) {
-
-    localStorage.setItem(
-      "token",
-      res.data.token
-    );
-
-  }
-
-  // 🔥 SAVE USER
-  if (res.data?.user) {
-
-    localStorage.setItem(
-      "user",
-      JSON.stringify(res.data.user)
-    );
-
-  }
-
-  return res.data;
-
+  return saveSession(response.data);
 };
 
-// ✅ LOGOUT
+/* =========================
+   LOGOUT
+========================= */
+
 export const logoutUser = () => {
-
-  localStorage.removeItem(
-    "token"
-  );
-
-  localStorage.removeItem(
-    "user"
-  );
-
-  window.location.href = "/";
-
+  try {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  } finally {
+    window.location.replace("/");
+  }
 };
 
 /* =========================
-   👤 USER
+   CURRENT USER
 ========================= */
 
-// ✅ GET CURRENT USER
 export const getMe = async () => {
+  const response = await API.get("/auth/me");
 
-  const res = await API.get(
-    "/auth/me"
-  );
+  if (response.data?.user) {
+    updateCachedUser(response.data.user);
+  }
 
-  return res.data;
-
+  return response.data;
 };
 
-// ✅ UPDATE PROFILE
-export const updateProfile =
-  async (data) => {
-
-    const res = await API.put(
-      "/auth/update",
-      data
-    );
-
-    // 🔥 UPDATE LOCAL USER
-    if (res.data?.user) {
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify(res.data.user)
-      );
-
-    }
-
-    return res.data;
-
-  };
-
 /* =========================
-   🚀 ONBOARDING
+   UPDATE PROFILE
 ========================= */
 
-// ✅ COMPLETE ONBOARDING
-export const completeOnboarding =
-  async (data) => {
+export const updateProfile = async (data) => {
+  const response = await API.put("/auth/update", data);
 
-    const res = await API.post(
-      "/auth/onboarding",
-      data
-    );
+  if (response.data?.user) {
+    updateCachedUser(response.data.user);
+  }
 
-    // 🔥 UPDATE USER
-    if (res.data?.user) {
+  return response.data;
+};
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify(res.data.user)
-      );
+/* =========================
+   COMPLETE ONBOARDING
+========================= */
 
-    }
+export const completeOnboarding = async (data) => {
+  const response = await API.post("/auth/onboarding", data);
 
-    return res.data;
+  if (response.data?.user) {
+    updateCachedUser(response.data.user);
+  }
 
-  };
+  return response.data;
+};

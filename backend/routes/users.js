@@ -1,57 +1,59 @@
+
 const express = require("express");
 const router = express.Router();
 
 const { protect } = require("../middleware/authMiddleware");
 const {
   getAllUsers,
-  getUserProfile
+  getUserProfile,
 } = require("../controllers/userController");
 
 /* =======================
-   👤 GET CURRENT USER
+   ADMIN AUTHORIZATION
+======================= */
+
+function getAdminEmails() {
+  return (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+const adminOnly = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required.",
+    });
+  }
+
+  const isAdminRole =
+    typeof req.user.role === "string" &&
+    req.user.role.toLowerCase() === "admin";
+
+  // Temporary compatibility option for existing email-based admin access.
+  const adminEmails = getAdminEmails();
+  const isConfiguredAdminEmail =
+    typeof req.user.email === "string" &&
+    adminEmails.includes(req.user.email.trim().toLowerCase());
+
+  if (!isAdminRole && !isConfiguredAdminEmail) {
+    return res.status(403).json({
+      success: false,
+      message: "You do not have permission to access this resource.",
+    });
+  }
+
+  return next();
+};
+
+/* =======================
+   GET CURRENT USER
 ======================= */
 router.get("/me", protect, getUserProfile);
 
-
 /* =======================
-   🔐 ADMIN MIDDLEWARE (SAFE)
-======================= */
-const adminOnly = (req, res, next) => {
-
-  try {
-
-    const ADMIN_EMAIL = "thakraldaksh5040@gmail.com";
-
-    if (!req.user?.email) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized ❌"
-      });
-    }
-
-    if (req.user.email !== ADMIN_EMAIL) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied ❌"
-      });
-    }
-
-    next();
-
-  } catch (err) {
-
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
-
-  }
-
-};
-
-
-/* =======================
-   👥 GET ALL USERS (ADMIN ONLY)
+   GET ALL USERS — ADMIN ONLY
 ======================= */
 router.get("/", protect, adminOnly, getAllUsers);
 

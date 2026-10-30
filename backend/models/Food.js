@@ -1,58 +1,39 @@
+
 const db = require("../config/mysql");
 
-/* =======================
-   ✅ GET ALL FOODS
-======================= */
-const getFoods = () => {
+/**
+ * Get all foods without removing or filtering existing food items.
+ */
+const getFoods = async () => {
+  const [rows] = await db.promise().query(
+    "SELECT * FROM foods ORDER BY id ASC"
+  );
 
-  return new Promise((resolve, reject) => {
-
-    db.query(
-      "SELECT * FROM foods",
-      (err, results) => {
-
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results);
-        }
-
-      }
-    );
-
-  });
-
+  return rows;
 };
 
-/* =======================
-   ✅ GET FOOD BY ID
-======================= */
-const getFoodById = (id) => {
+/**
+ * Get one food by ID.
+ */
+const getFoodById = async (id) => {
+  const foodId = Number(id);
 
-  return new Promise((resolve, reject) => {
+  if (!Number.isSafeInteger(foodId) || foodId <= 0) {
+    return null;
+  }
 
-    db.query(
-      "SELECT * FROM foods WHERE id = ?",
-      [id],
-      (err, results) => {
+  const [rows] = await db.promise().query(
+    "SELECT * FROM foods WHERE id = ? LIMIT 1",
+    [foodId]
+  );
 
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results[0]);
-        }
-
-      }
-    );
-
-  });
-
+  return rows[0] || null;
 };
 
-/* =======================
-   ✅ CREATE DIET ENTRY
-======================= */
-const createDietEntry = (
+/**
+ * Create a diet entry.
+ */
+const createDietEntry = async (
   userId,
   mealType,
   foodId,
@@ -62,11 +43,55 @@ const createDietEntry = (
   carbs,
   fats
 ) => {
+  const parsedUserId = Number(userId);
+  const parsedFoodId = Number(foodId);
+  const parsedQuantity = Number(quantity);
+  const parsedCalories = Number(calories);
+  const parsedProtein = Number(protein);
+  const parsedCarbs = Number(carbs);
+  const parsedFats = Number(fats);
 
-  return new Promise((resolve, reject) => {
+  if (!Number.isSafeInteger(parsedUserId) || parsedUserId <= 0) {
+    throw new Error("A valid user ID is required.");
+  }
 
-    db.query(
-      `INSERT INTO diet_entries
+  if (!Number.isSafeInteger(parsedFoodId) || parsedFoodId <= 0) {
+    throw new Error("A valid food ID is required.");
+  }
+
+  if (
+    !Number.isFinite(parsedQuantity) ||
+    parsedQuantity <= 0 ||
+    parsedQuantity > 100000
+  ) {
+    throw new Error("Food quantity must be a positive, valid number.");
+  }
+
+  const nutritionValues = [
+    parsedCalories,
+    parsedProtein,
+    parsedCarbs,
+    parsedFats,
+  ];
+
+  if (
+    nutritionValues.some(
+      (value) => !Number.isFinite(value) || value < 0
+    )
+  ) {
+    throw new Error("Nutrition values must be valid non-negative numbers.");
+  }
+
+  if (
+    typeof mealType !== "string" ||
+    !mealType.trim() ||
+    mealType.trim().length > 50
+  ) {
+    throw new Error("A valid meal type is required.");
+  }
+
+  const [result] = await db.promise().query(
+    `INSERT INTO diet_entries
       (
         user_id,
         mealType,
@@ -77,34 +102,24 @@ const createDietEntry = (
         carbs,
         fats
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        userId,
-        mealType,
-        foodId,
-        quantity,
-        calories,
-        protein,
-        carbs,
-        fats
-      ],
-      (err, result) => {
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      parsedUserId,
+      mealType.trim(),
+      parsedFoodId,
+      parsedQuantity,
+      parsedCalories,
+      parsedProtein,
+      parsedCarbs,
+      parsedFats,
+    ]
+  );
 
-        if (err) {
-          reject(err);
-        } else {
-          resolve(result);
-        }
-
-      }
-    );
-
-  });
-
+  return result;
 };
 
 module.exports = {
   getFoods,
   getFoodById,
-  createDietEntry
+  createDietEntry,
 };

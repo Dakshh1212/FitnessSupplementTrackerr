@@ -1,83 +1,121 @@
-export default function Step3({ next }) {
 
-  const goals = [
-    {
-      key: "fat_loss",
-      title: "Fat Loss",
-      icon: "🔥",
-      desc: "Burn calories & reduce body fat",
-      color: "from-red-500 to-orange-500"
-    },
-    {
-      key: "muscle_gain",
-      title: "Muscle Gain",
-      icon: "💪",
-      desc: "Build strength & muscle mass",
-      color: "from-blue-500 to-cyan-500"
-    },
-    {
-      key: "maintenance",
-      title: "Maintain",
-      icon: "⚖️",
-      desc: "Stay fit & balanced lifestyle",
-      color: "from-green-500 to-emerald-500"
-    }
-  ];
+import { useState } from "react";
+
+const goals = [
+  {
+    key: "fat_loss",
+    title: "Fat Loss",
+    icon: "🔥",
+    description: "Reduce body fat while maintaining muscle.",
+    color: "from-orange-500/15 to-red-500/5",
+  },
+  {
+    key: "muscle_gain",
+    title: "Muscle Gain",
+    icon: "💪",
+    description: "Build strength and support muscle growth.",
+    color: "from-blue-500/15 to-cyan-500/5",
+  },
+  {
+    key: "maintenance",
+    title: "Maintain Fitness",
+    icon: "⚖️",
+    description: "Maintain your weight and a balanced routine.",
+    color: "from-emerald-500/15 to-teal-500/5",
+  },
+];
+
+export default function Step3({ next }) {
+  const [selectedGoal, setSelectedGoal] = useState("");
+
+  const handleContinue = (event) => {
+    event.preventDefault();
+
+    if (!selectedGoal) return;
+
+    next({ goal: selectedGoal });
+  };
 
   return (
-    <div className="flex items-center justify-center">
-
-      <div className="w-full max-w-md bg-white/5 border border-white/10 backdrop-blur-xl rounded-2xl p-6 space-y-5">
-
-        {/* TITLE */}
-        <div className="text-center">
-          <h2 className="text-2xl font-bold">
-            Your Goal 🎯
-          </h2>
-          <p className="text-sm text-gray-400">
-            Select what you want to achieve
-          </p>
+    <form
+      onSubmit={handleContinue}
+      className="mx-auto w-full max-w-md space-y-6"
+    >
+      {/* Heading */}
+      <div className="text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-3xl">
+          🎯
         </div>
 
-        {/* CARDS */}
-        <div className="space-y-3">
+        <h2 className="text-2xl font-bold tracking-tight text-white">
+          What's your goal?
+        </h2>
 
-          {goals.map((g) => (
-            <button
-              key={g.key}
-              onClick={() => next({ goal: g.key })}
-              className="w-full text-left group"
-            >
-
-              <div className={`p-4 rounded-2xl border border-white/10 bg-gradient-to-r ${g.color} bg-opacity-10 hover:scale-[1.02] transition`}>
-
-                <div className="flex items-center gap-3">
-
-                  <div className="text-2xl">
-                    {g.icon}
-                  </div>
-
-                  <div>
-                    <p className="font-semibold">
-                      {g.title}
-                    </p>
-
-                    <p className="text-xs text-gray-300">
-                      {g.desc}
-                    </p>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </button>
-          ))}
-
-        </div>
-
+        <p className="mt-2 text-sm text-gray-400">
+          Choose the primary outcome you want to work toward.
+        </p>
       </div>
 
-    </div>
+      {/* Goal choices */}
+      <div className="space-y-3">
+        {goals.map((goal) => {
+          const isSelected = selectedGoal === goal.key;
+
+          return (
+            <button
+              key={goal.key}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              onClick={() => setSelectedGoal(goal.key)}
+              className={`group flex w-full items-center gap-4 rounded-2xl border bg-gradient-to-r ${goal.color} p-4 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#020617] ${
+                isSelected
+                  ? "border-emerald-400 ring-1 ring-emerald-400/40"
+                  : "border-white/10 hover:border-white/25"
+              }`}
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-2xl">
+                {goal.icon}
+              </span>
+
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-white">
+                  {goal.title}
+                </span>
+
+                <span className="mt-1 block text-xs leading-relaxed text-gray-400">
+                  {goal.description}
+                </span>
+              </span>
+
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs transition ${
+                  isSelected
+                    ? "border-emerald-400 bg-emerald-400 text-gray-950"
+                    : "border-gray-500 text-transparent"
+                }`}
+                aria-hidden="true"
+              >
+                ✓
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Continue */}
+      <button
+        type="submit"
+        disabled={!selectedGoal}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-3.5 font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Continue
+        <span aria-hidden="true">→</span>
+      </button>
+
+      <p className="text-center text-xs text-gray-500">
+        You can adjust your fitness goals as your needs change.
+      </p>
+    </form>
   );
 }

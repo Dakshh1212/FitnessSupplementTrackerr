@@ -1,77 +1,95 @@
+
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 
 const router = express.Router();
+const { protect } = require("../middleware/authMiddleware");
 
-/* =======================
-   📁 CREATE UPLOAD DIR SAFELY
-======================= */
-const uploadPath = path.join(__dirname, "../uploads");
+const uploadPath = path.resolve(__dirname, "../uploads");
 
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-}
+fs.mkdirSync(uploadPath, { recursive: true });
 
-/* =======================
-   📦 MULTER CONFIG
-======================= */
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+const EXTENSIONS = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+};
+
 const storage = multer.diskStorage({
-
   destination: (req, file, cb) => {
     cb(null, uploadPath);
   },
 
   filename: (req, file, cb) => {
+    const extension = EXTENSIONS[file.mimetype];
 
-    const uniqueName =
-      Date.now() +
-      "-" +
-      Math.round(Math.random() * 1e9);
+    if (!extension) {
+      return cb(new Error("Unsupported image format."));
+    }
 
-    cb(null, uniqueName + path.extname(file.originalname));
-  }
-
+    cb(null, `${crypto.randomUUID()}${extension}`);
+  },
 });
 
 const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit (IMPORTANT)
-  }
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+    fields: 10,
+  },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      return cb(
+        new Error("Only JPEG, PNG, WebP, and GIF images are allowed.")
+      );
+    }
+
+    cb(null, true);
+  },
 });
 
-/* =======================
-   🖼️ UPLOAD IMAGE (FIXED)
-======================= */
-router.post("/", upload.single("image"), (req, res) => {
+router.post("/", protect, (req, res) => {
+  upload.single("image")(req, res, (error) => {
+    if (error) {
+      const isUploadError = error instanceof multer.MulterError;
 
-  try {
+      return res.status(isUploadError ? 400 : 415).json({
+        success: false,
+        message: isUploadError
+          ? error.code === "LIMIT_FILE_SIZE"
+            ? "Image must be 5 MB or smaller."
+            : "Invalid upload. Please upload one image at a time."
+          : error.message || "Unsupported image format.",
+      });
+    }
 
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "No file uploaded ❌"
+        message: "Please select an image to upload.",
       });
     }
 
-    return res.json({
+    const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+    return res.status(201).json({
       success: true,
-      imageUrl: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+      message: "Image uploaded successfully.",
+      imageUrl,
     });
-
-  } catch (err) {
-
-    console.log("UPLOAD ERROR:", err);
-
-    return res.status(500).json({
-      success: false,
-      message: "Upload failed ❌"
-    });
-
-  }
-
+  });
 });
 
 module.exports = router;

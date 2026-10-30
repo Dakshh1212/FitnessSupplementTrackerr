@@ -1,4 +1,6 @@
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -12,63 +14,99 @@ import Admin from "./pages/Admin";
 import AdminUser from "./pages/AdminUser";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import AICoach from "./pages/AICoach";
 
-function App() {
+function AppRoutes() {
+  const [authVersion, setAuthVersion] = useState(0);
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setAuthVersion((version) => version + 1);
+    };
+
+    window.addEventListener("authChanged", handleAuthChange);
+    window.addEventListener("storage", handleAuthChange);
+
+    return () => {
+      window.removeEventListener("authChanged", handleAuthChange);
+      window.removeEventListener("storage", handleAuthChange);
+    };
+  }, []);
+
+  // Re-render when authentication data changes.
+  void authVersion;
+
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  let user = null;
+
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    user = null;
+  }
+
+  const isLoggedIn = Boolean(token && user);
+  const onboardingComplete =
+    user?.isOnboardingComplete === true ||
+    Number(user?.isOnboardingComplete) === 1;
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <Routes>
+      {/* ROOT */}
+      <Route
+        path="/"
+        element={
+          !isLoggedIn ? (
+            <Auth />
+          ) : onboardingComplete ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Navigate to="/onboarding" replace />
+          )
+        }
+      />
 
-        {/* ROOT */}
-        <Route
-          path="/"
-          element={
-            !token ? (
-              <Auth />
-            ) : !user ? (
-              <Auth />
-            ) : !user.isOnboardingComplete ? (
-              <Navigate to="/onboarding" replace />
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          }
-        />
+      {/* ONBOARDING */}
+      <Route
+        path="/onboarding"
+        element={
+          !isLoggedIn ? (
+            <Navigate to="/" replace />
+          ) : onboardingComplete ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <Onboarding />
+          )
+        }
+      />
 
-        {/* ONBOARDING */}
-        <Route
-          path="/onboarding"
-          element={
-            !token ? (
-              <Navigate to="/" replace />
-            ) : user?.isOnboardingComplete ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <Onboarding />
-            )
-          }
-        />
+      {/* PROTECTED ROUTES */}
 
-        {/* PROTECTED */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/diet" element={<Diet />} />
-          <Route path="/workout" element={<Workout />} />
-          <Route path="/supplements" element={<Supplements />} />
-          <Route path="/profile" element={<Profile />} />
+<Route element={<ProtectedRoute />}>
+  <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/diet" element={<Diet />} />
+  <Route path="/workout" element={<Workout />} />
+  <Route path="/supplements" element={<Supplements />} />
+  <Route path="/profile" element={<Profile />} />
 
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/user/:id" element={<AdminUser />} />
-        </Route>
+  <Route path="/admin" element={<Admin />} />
+  <Route path="/admin/user/:id" element={<AdminUser />} />
 
-        {/* FALLBACK */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+  <Route path="/ai-coach" element={<AICoach />} />
+</Route>
 
-      </Routes>
-    </BrowserRouter>
+
+      {/* FALLBACK */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
+  );
+}
